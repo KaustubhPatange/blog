@@ -16,7 +16,7 @@
   <div class="nav">
     {{ if .Site.Params.logo }}
     {{ if ne .URL "/" }}
-    <a href="{{ "" | absLangURL }}" class="logo">
+    <a href="{{ .Site.BaseURL }}" class="logo">
       <i class="fa fa-arrow-left"></i>
       <!-- <img src="{{ .Site.BaseURL }}images/{{ .Site.Params.logo.url }}" width="{{ .Site.Params.logo.width }}"
         height="{{ .Site.Params.logo.height }}" alt="{{ .Site.Params.logo.alt }}" /> -->
