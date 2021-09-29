@@ -1,0 +1,140 @@
+<!doctype html><html lang=en>
+<head>
+<meta charset=utf-8>
+<title>Parallelism in suspend functions</title>
+<meta http-equiv=x-ua-compatible content="IE=edge">
+<meta name=viewport content="width=device-width,initial-scale=1">
+<link rel=alternate type=application/rss+xml href=https://kaustubhpatange.github.io/blog/index.xml title=Blog>
+<meta name=twitter:card content="summary">
+<meta name=twitter:title content="Parallelism in suspend functions">
+<meta name=twitter:description content="We know how to execute parallel suspend functions in a CoroutineScope, but how to do it within a suspend function that has a return type.">
+<link rel=stylesheet href=https://kaustubhpatange.github.io/blog/fontawesome/css/all.min.css>
+<link id=dark-mode-theme rel=stylesheet href=https://kaustubhpatange.github.io/blog/css/dark.css>
+<script>var darkTheme=document.getElementById('dark-mode-theme'),storedTheme=localStorage.getItem('dark-mode-storage');storedTheme==='dark'?darkTheme.disabled=!1:storedTheme==='light'&&(darkTheme.disabled=!0)</script>
+<script src=https://kaustubhpatange.github.io/blog/js/main.bundle.js></script>
+<script src=https://kaustubhpatange.github.io/blog/js/instantpage.min.js type=module defer></script>
+<meta name=generator content="Hugo 0.88.1">
+</head>
+<body>
+<header>
+<nav class=navbar>
+<style>.logo{font-size:1.5rem;margin-top:-3px;padding:0;float:left}@media(max-width:600px){.logo{font-size:1.1rem}}</style>
+<div class=nav>
+<a href=https://kaustubhpatange.github.io/blog/ class=logo>
+<i class="fa fa-arrow-left"></i>
+</a>
+<ul class=nav-links>
+<li>
+<a href=https://kaustubhpatange.github.io/blog/tags id=Tags><em class="fas fa-tag fa-lg"></em></a>
+</li>
+<li>
+<a href=https://kaustubhpatange.github.io/blog/search id=Search><em class="fas fa-search fa-lg"></em></a>
+</li>
+</ul>
+</div>
+</nav>
+<div class=intro-header>
+<div class=container>
+<div class=post-heading>
+<h1>
+Parallelism in suspend functions
+</h1>
+<span class=meta-post>
+<em class="fa fa-calendar-alt"></em>&nbsp;Sep 29, 2021
+</span>
+</div>
+</div>
+</div>
+</header>
+<div class=container role=main>
+<article class=article class=blog-post>
+<p>We know how to execute parallel suspend functions in a <code>CoroutineScope</code>, but how to do it within a suspend function that has a return type.</p>
+<h2 id=the-problem>The Problem</h2>
+<p>For what we know it is not hard to run multiple suspend functions parallelly in a <code>CoroutineScope</code> using <code>async {}</code> block. <code>async</code>&rsquo;s return type is <code>Deferred&lt;T></code> which then can be awaited so it is possible to chain multiple <code>Deferred&lt;T></code> jobs using <code>awaitAll</code> which solves the problem of parallelism.</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-kotlin data-lang=kotlin><span style=color:#66d9ef>suspend</span> <span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>taskList1</span>() = <span style=color:#e6db74>&#34;Some text data&#34;</span>
+<span style=color:#66d9ef>suspend</span> <span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>taskList2</span>() = <span style=color:#e6db74>&#34;Another random data&#34;</span>
+
+<span style=color:#66d9ef>suspend</span> <span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>parallelNoReturnType</span>() {
+    CoroutineScope(Dispatchers.IO).launch {
+        <span style=color:#66d9ef>val</span> task1 = async { taskList1() }
+        <span style=color:#66d9ef>val</span> task2 = async { taskList2() }
+
+        <span style=color:#66d9ef>val</span> total: List&lt;String&gt; = awaitAll(task1, task2)
+
+        <span style=color:#75715e>// process data &amp; return unit
+</span><span style=color:#75715e></span>    }
+}
+</code></pre></div><p>Certainly, this is not a problem but what if the return type of the function is other than <code>Unit</code> meaning there is need for a non <code>Unit</code> return type. Certainly returning the <code>total</code> variable from above will not work as it is in the <code>@launch</code> scope, also returning the <code>CoroutineScope</code> will not work since it&rsquo;s return type is <code>Job</code> not <code>List&lt;String></code> which we are expecting.</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-kotlin data-lang=kotlin><span style=color:#75715e>// Eg: 1 - Returning total variable (will not compile)
+</span><span style=color:#75715e></span><span style=color:#66d9ef>suspend</span> <span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>parallelReturnType</span>() : List&lt;String&gt;  {
+    CoroutineScope(<span style=color:#f92672>..</span>.).launch {
+        <span style=color:#f92672>..</span>.
+        <span style=color:#66d9ef>val</span> total: List&lt;String&gt; = <span style=color:#f92672>..</span>.
+
+        <span style=color:#66d9ef>return</span> total <span style=color:#75715e>// Error
+</span><span style=color:#75715e></span>    }
+}
+
+<span style=color:#75715e>// Eg: 2 - Returning CoroutineScope (will not compile)
+</span><span style=color:#75715e></span><span style=color:#66d9ef>suspend</span> <span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>parallelReturnType</span>() : List&lt;String&gt; {
+    <span style=color:#75715e>// Valid return type but it&#39;s not List&lt;String&gt;; Error
+</span><span style=color:#75715e></span>    <span style=color:#66d9ef>return</span> CoroutineScope(<span style=color:#f92672>..</span>.).launch {
+        <span style=color:#f92672>..</span>.
+        <span style=color:#66d9ef>val</span> total: List&lt;String&gt; = <span style=color:#f92672>..</span>.
+        total <span style=color:#75715e>// hoping this would be the result just like `run` function
+</span><span style=color:#75715e></span>    }
+}
+</code></pre></div><h2 id=solution>Solution</h2>
+<p>The easy fix is to use <code>coroutineScope { }</code> suspend function which has a signature <code>public suspend fun &lt;R> coroutineScope(block: suspend CoroutineScope.() -> R): R</code>.</p>
+<p>For us the <code>R</code> is <code>List&lt;String></code>, using it in the above code requires minimal edit.</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-kotlin data-lang=kotlin><span style=color:#66d9ef>suspend</span> <span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>parallelReturnType</span>() : List&lt;String&gt; = coroutineScope scope<span style=color:#960050;background-color:#1e0010>@</span>{
+    <span style=color:#66d9ef>val</span> task1 = async { taskList1() }
+    <span style=color:#66d9ef>val</span> task2 = async { taskList2() }
+
+    <span style=color:#66d9ef>val</span> total: List&lt;String&gt; = awaitAll(task1, task2)
+
+    <span style=color:#66d9ef>return</span><span style=color:#a6e22e>@scope</span> total
+}
+</code></pre></div><p>The <code>coroutineScope</code> uses the default <code>coroutineContext</code> associated with the suspend function i.e the parent&rsquo;s coroutine context which was used to invoke this suspend function.</p>
+<p>If you want to dispatch the jobs on some other <code>CoroutineDispatcher</code> you can use <code>.async {}</code> on <code>CoroutineScope</code>.</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-kotlin data-lang=kotlin><span style=color:#66d9ef>suspend</span> <span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>parallelReturnType</span>() : List&lt;String&gt; = CoroutineScope(Dispatchers.Default).async {
+    <span style=color:#66d9ef>val</span> task1 = async { taskList1() }
+    <span style=color:#66d9ef>val</span> task2 = async { taskList2() }
+
+    <span style=color:#66d9ef>val</span> total: List&lt;String&gt; = awaitAll(task1, task2)
+
+    <span style=color:#66d9ef>return</span><span style=color:#a6e22e>@async</span> total
+}.await() <span style=color:#75715e>// important otherwise the return type will be Deferred&lt;List&lt;String&gt;&gt;
+</span></code></pre></div>
+<style>pre code,pre,code{white-space:pre!important;overflow-x:scroll!important;word-break:keep-all!important;word-wrap:initial!important}</style>
+<div class=blog-tags>
+<a href=https://kaustubhpatange.github.io/blog/tags/kotlin/>kotlin</a>&nbsp;
+<a href=https://kaustubhpatange.github.io/blog/tags/coroutines/>coroutines</a>&nbsp;
+</div>
+</article>
+</div>
+<footer>
+<div class=social-icons>
+<a href=index.xml name=rss>
+<em class="fa fa-rss"></em>
+</a>
+</div>
+<div class=container>
+<p class="credits copyright">
+<a href=https://kaustubhpatange.github.io/>Kaustubh Patange</a>
+&nbsp;&copy;
+2021
+&nbsp;/&nbsp;
+<a href=https://kaustubhpatange.github.io/blog/>Blog</a>
+&nbsp;&ndash;&nbsp;
+<em class="fas fa-moon" id=dark-mode-toggle></em>
+</p>
+<p class="credits theme-by">
+Powered By <a href=https://gohugo.io>Hugo</a>&nbsp;
+Theme
+<a href=https://github.com/matsuyoshi30/harbor>Harbor</a>
+</p>
+</div>
+</footer>
+</body>
+</html>
