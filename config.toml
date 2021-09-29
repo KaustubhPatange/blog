@@ -1,5 +1,6 @@
 theme = "harbor"
 baseurl = "/"
+relativeurls = true
 title = "Blogs"
 paginate = 5
 languageCode = "en"
