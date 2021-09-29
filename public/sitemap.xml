@@ -2,25 +2,25 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>/</loc>
+    <loc>https://kaustubhpatange.github.io/blog/</loc>
     <lastmod>2019-03-05T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>/post/first/</loc>
+    <loc>https://kaustubhpatange.github.io/blog/post/first/</loc>
     <lastmod>2019-03-05T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>/post/</loc>
+    <loc>https://kaustubhpatange.github.io/blog/post/</loc>
     <lastmod>2019-03-05T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>/tags/tag/</loc>
+    <loc>https://kaustubhpatange.github.io/blog/tags/tag/</loc>
     <lastmod>2019-03-05T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>/tags/</loc>
+    <loc>https://kaustubhpatange.github.io/blog/tags/</loc>
     <lastmod>2019-03-05T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>/archives/</loc>
+    <loc>https://kaustubhpatange.github.io/blog/archives/</loc>
   </url><url>
-    <loc>/categories/</loc>
+    <loc>https://kaustubhpatange.github.io/blog/categories/</loc>
   </url><url>
-    <loc>/search/</loc>
+    <loc>https://kaustubhpatange.github.io/blog/search/</loc>
   </url>
 </urlset>
