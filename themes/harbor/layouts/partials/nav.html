@@ -1,0 +1,41 @@
+<nav class="navbar">
+  <style>
+    .logo {
+      font-size: 1.5rem;
+      margin: 0;
+      padding: 0;
+      float: left;
+    }
+
+    @media (max-width: 600px) {
+      .logo {
+        font-size: 1.1rem;
+      }
+    }
+  </style>
+  <div class="nav">
+    {{ if .Site.Params.logo }}
+    {{ if ne .URL "/" }}
+    <a href="{{ "" | absLangURL }}" class="logo">
+      <i class="fa fa-arrow-left"></i>
+      <!-- <img src="{{ .Site.BaseURL }}images/{{ .Site.Params.logo.url }}" width="{{ .Site.Params.logo.width }}"
+        height="{{ .Site.Params.logo.height }}" alt="{{ .Site.Params.logo.alt }}" /> -->
+    </a>
+    {{ end }}
+    {{ end }}
+
+    <ul class="nav-links">
+      {{ range .Site.Params.nav }}
+      {{ if .icon }}
+      <li>
+        <a href="{{ .url | relLangURL }}" id="{{ .name }}"><em class="{{ .icon }}"></em></a>
+      </li>
+      {{ else }}
+      <li>
+        <a href="{{ .url | relLangURL }}" id="{{ .name }}">{{ .name }}</a>
+      </li>
+      {{ end }}
+      {{ end }}
+    </ul>
+  </div>
+</nav>
