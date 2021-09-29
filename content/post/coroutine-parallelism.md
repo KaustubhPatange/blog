@@ -92,7 +92,7 @@ suspend fun parallelReturnType() : List<String> = CoroutineScope(Dispatchers.Def
 <style>
     pre code, pre, code {
         white-space: pre !important;
-        overflow-x: scroll !important;
+        overflow-x: auto !important;
         word-break: keep-all !important;
         word-wrap: initial !important;
     }
