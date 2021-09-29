@@ -1,14 +1,11 @@
 theme = "harbor"
-baseurl = ""
-relativeurls = true
-uglyurls = true
+baseurl = "/"
 title = "Blogs"
 paginate = 5
 languageCode = "en"
 DefaultContentLanguage = "en"
 enableInlineShortcodes = true
 footnoteReturnLinkContents = "^"
-canonifyurls = true
 
 # Optional
 # If you use googleAnalytics, you set top-level options in config.toml to the beginning of the config file like other top-level options.
