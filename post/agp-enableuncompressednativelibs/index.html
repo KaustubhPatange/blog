@@ -1,0 +1,115 @@
+<!doctype html><html lang=en>
+<head>
+<meta charset=utf-8>
+<title>The undocumented AGP's gradle property.</title>
+<meta http-equiv=x-ua-compatible content="IE=edge">
+<meta name=viewport content="width=device-width,initial-scale=1">
+<link rel=alternate type=application/rss+xml href=https://kaustubhpatange.github.io/blog/index.xml title=Blog>
+<meta name=twitter:card content="summary">
+<meta name=twitter:title content="The undocumented AGP's gradle property.">
+<meta name=twitter:description content="One of the scariest experience where I was about to break my production app due to my unfamiliarity with AGP&rsquo;s android.bundle.enableUncompressedNativeLibs gradle property.">
+<link rel=stylesheet href=https://kaustubhpatange.github.io/blog/fontawesome/css/all.min.css>
+<link id=dark-mode-theme rel=stylesheet href=https://kaustubhpatange.github.io/blog/css/dark.css>
+<script>var darkTheme=document.getElementById('dark-mode-theme'),storedTheme=localStorage.getItem('dark-mode-storage');storedTheme==='dark'?darkTheme.disabled=!1:storedTheme==='light'&&(darkTheme.disabled=!0)</script>
+<script src=https://kaustubhpatange.github.io/blog/js/main.bundle.js></script>
+<script src=https://kaustubhpatange.github.io/blog/js/instantpage.min.js type=module defer></script>
+<meta name=generator content="Hugo 0.88.1">
+</head>
+<body>
+<header>
+<nav class=navbar>
+<style>.logo{font-size:1.5rem;margin-top:-3px;padding:0;float:left}@media(max-width:600px){.logo{font-size:1.1rem}}</style>
+<div class=nav>
+<a href=https://kaustubhpatange.github.io/blog/ class=logo>
+<i class="fa fa-arrow-left"></i>
+</a>
+<ul class=nav-links>
+<li>
+<a href=https://kaustubhpatange.github.io/blog/tags id=Tags><em class="fas fa-tag fa-lg"></em></a>
+</li>
+<li>
+<a href=https://kaustubhpatange.github.io/blog/search id=Search><em class="fas fa-search fa-lg"></em></a>
+</li>
+</ul>
+</div>
+</nav>
+<div class=intro-header>
+<div class=container>
+<div class=post-heading>
+<h1>
+The undocumented AGP's gradle property.
+</h1>
+<span class=meta-post>
+<em class="fa fa-calendar-alt"></em>&nbsp;Oct 3, 2021
+</span>
+</div>
+</div>
+</div>
+</header>
+<div class=container role=main>
+<article class=article class=blog-post>
+<p>One of the scariest experience where I was about to break my production app due to my unfamiliarity with AGP&rsquo;s <code>android.bundle.enableUncompressedNativeLibs</code> gradle property.</p>
+<p>This was the time when I was about to release a new app on Google Play called <a href="https://play.google.com/store/apps/details?id=com.kpstv.vpn">Gear VPN</a>, completely ignorant about this issue that only occurs when you create an app bundle to publish on Google Play.</p>
+<h2 id=the-problem>The problem</h2>
+<p>So my app has many native libraries (.so) which are loaded at runtime to execute some commands at runtime. This was working completely fine on debug & release builds because the optimization only happens for app bundle. Keep in mind that if you test the app on pre <code>M</code> devices the app will work fine & will not break due to this optimization.</p>
+<h3 id=what-is-this-optimization>What is this optimization?</h3>
+<p>Below are the screenshot of the app&rsquo;s <code>/data/app</code> folder when installed in different modes.</p>
+<table>
+<thead>
+<tr>
+<th>Package (.apk) - Release</th>
+<th>Bundle (.aab) - Release</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img src=https://kaustubhpatange.github.io/blog/images/agp-vpn-release.png alt="Apk - Release"></td>
+<td><img src=https://kaustubhpatange.github.io/blog/images/agp-vpn-bundle.png alt="Bundle - Release"></td>
+</tr>
+</tbody>
+</table>
+<p>As you can notice, for the &ldquo;Bundle&rdquo; no libs (specific to device architecture) are extracted in <code>lib</code> folder which means any call to <code>System.loadLibrary()</code> or directly executing binary (that contains path like <code>getApplicationInfo().nativeLibDir</code>) will fail internally without producing any crash.</p>
+<p>But what actually happens? On & after <code>M</code>, the platform supports reading native libraries directly from the APK without having to extract them. This is why we don&rsquo;t see a <code>lib</code> folder when the app is installed from the app bundle. So any argument passed to execute a command through this library will not work since the directory <code>getApplicationInfo().nativeLibDir</code> doesn&rsquo;t exists.</p>
+<p>This issue actually broke my app&rsquo;s core feature. Thanks to some of the internal testers who verified this issue before me publishing to the production.</p>
+<h2 id=solution>Solution</h2>
+<p>There are mainly two solutions,</p>
+<ol>
+<li>If you are the maintainer of the library then remove <code>getApplicationInfo().nativeLibDir</code> call from <code>System.loadLibrary()</code> for post <code>L</code> devices & instead directly specify the library name as the platform then supports reading them directly from the APK.</li>
+<li>You can also opt out of this optimization by setting <code>android.bundle.enableUncompressedNativeLibs</code> flag to <code>false</code> in gradle.properties file.</li>
+</ol>
+<p>For my app, since it was a third party library my only available option was to go with the gradle property solution.</p>
+<h3 id=why-was-this-optimization-added>Why was this optimization added?</h3>
+<p>Disabling the optimization leads to bigger APKs on users devices since the native libraries are extracted out of the APK (and thus also longer installation times).</p>
+<style>pre code,pre,code{white-space:pre!important;overflow-x:auto!important;word-break:keep-all!important;word-wrap:initial!important}</style>
+<div class=blog-tags>
+<a href=https://kaustubhpatange.github.io/blog/tags/android/>android</a>&nbsp;
+<a href=https://kaustubhpatange.github.io/blog/tags/agp/>agp</a>&nbsp;
+<a href=https://kaustubhpatange.github.io/blog/tags/gradle/>gradle</a>&nbsp;
+</div>
+</article>
+</div>
+<footer>
+<div class=social-icons>
+<a href=index.xml name=rss>
+<em class="fa fa-rss"></em>
+</a>
+</div>
+<div class=container>
+<p class="credits copyright">
+<a href=https://kaustubhpatange.github.io/>Kaustubh Patange</a>
+&nbsp;&copy;
+2021
+&nbsp;/&nbsp;
+<a href=https://kaustubhpatange.github.io/blog/>Blog</a>
+&nbsp;&ndash;&nbsp;
+<em class="fas fa-moon" id=dark-mode-toggle></em>
+</p>
+<p class="credits theme-by">
+Powered By <a href=https://gohugo.io>Hugo</a>&nbsp;
+Theme
+<a href=https://github.com/matsuyoshi30/harbor>Harbor</a>
+</p>
+</div>
+</footer>
+</body>
+</html>
