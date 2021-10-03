@@ -1,6 +1,6 @@
 # blog
 
-A diary where I write about interesting stuff I learn throughout my developer journey.
+A diary where I write interesting stuff I learn throughout my developer journey.
 
 Head over to: https://kaustubhpatange.github.io/blog
 
