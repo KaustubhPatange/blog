@@ -1,0 +1,340 @@
+<!doctype html><html lang=en>
+<head>
+<meta charset=utf-8>
+<title>Dagger's implementation of JSR 330</title>
+<meta http-equiv=x-ua-compatible content="IE=edge">
+<meta name=viewport content="width=device-width,initial-scale=1">
+<link rel=alternate type=application/rss+xml href=https://kaustubhpatange.github.io/blog/index.xml title=Blog>
+<meta name=twitter:card content="summary">
+<meta name=twitter:title content="Dagger's implementation of JSR 330">
+<meta name=twitter:description content="We will see some of the Dagger 2 generated code more specifically on how it uses SingleCheck<T> & DoubleCheck<T> implementations of javax.inject.Provider<T> internally.">
+<link rel=stylesheet href=https://kaustubhpatange.github.io/blog/fontawesome/css/all.min.css>
+<link id=dark-mode-theme rel=stylesheet href=https://kaustubhpatange.github.io/blog/css/dark.css>
+<script>var darkTheme=document.getElementById('dark-mode-theme'),storedTheme=localStorage.getItem('dark-mode-storage');storedTheme==='dark'?darkTheme.disabled=!1:storedTheme==='light'&&(darkTheme.disabled=!0)</script>
+<script src=https://kaustubhpatange.github.io/blog/js/main.bundle.js></script>
+<script src=https://kaustubhpatange.github.io/blog/js/instantpage.min.js type=module defer></script>
+<meta name=generator content="Hugo 0.88.1">
+</head>
+<body>
+<header>
+<nav class=navbar>
+<style>.logo{font-size:1.5rem;margin-top:-3px;padding:0;float:left}@media(max-width:600px){.logo{font-size:1.1rem}}</style>
+<div class=nav>
+<a href=https://kaustubhpatange.github.io/blog/ class=logo>
+<i class="fa fa-arrow-left"></i>
+</a>
+<ul class=nav-links>
+<li>
+<a href=https://kaustubhpatange.github.io/blog/tags id=Tags><em class="fas fa-tag fa-lg"></em></a>
+</li>
+<li>
+<a href=https://kaustubhpatange.github.io/blog/search id=Search><em class="fas fa-search fa-lg"></em></a>
+</li>
+</ul>
+</div>
+</nav>
+<div class=intro-header>
+<div class=container>
+<div class=post-heading>
+<h1>
+Dagger's implementation of JSR 330
+</h1>
+<span class=meta-post>
+<em class="fa fa-calendar-alt"></em>&nbsp;Oct 19, 2021
+</span>
+</div>
+</div>
+</div>
+</header>
+<div class=container role=main>
+<article class=article class=blog-post>
+<p>We will see some of the Dagger 2 generated code more specifically on how it uses <code>SingleCheck&lt;T></code> & <code>DoubleCheck&lt;T></code> implementations of <code>javax.inject.Provider&lt;T></code> internally.</p>
+<p>Whenever you create a <code>@Component</code> or <code>@Subcomponent</code>, dagger creates an implementation extending your type with some fields (from your modules & submodules), constructor & an <code>initialize</code> method.</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-kotlin data-lang=kotlin><span style=color:#a6e22e>@Singleton</span> <span style=color:#75715e>// this is just a scope, we can use a custom one if we want.
+</span><span style=color:#75715e></span><span style=color:#a6e22e>@Component</span>(modules = [AppModule<span style=color:#f92672>::</span><span style=color:#66d9ef>class</span>])
+<span style=color:#66d9ef>interface</span> <span style=color:#a6e22e>AppComponent</span> {
+    <span style=color:#f92672>..</span>.
+    <span style=color:#a6e22e>@Component</span>.Factory
+    <span style=color:#66d9ef>interface</span> <span style=color:#a6e22e>Factory</span> {
+        <span style=color:#75715e>// BindInstance ties parameter within the component heirarchy so it
+</span><span style=color:#75715e></span>        <span style=color:#75715e>// can be accessed/used in modules, subcomponents, etc.
+</span><span style=color:#75715e></span>        <span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>create</span>(<span style=color:#a6e22e>@BindInstance</span> application Application) : AppComponent
+    }
+
+    <span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>inject</span>(app: CustomApplication) <span style=color:#75715e>// `CustomApplication` is my application class.
+</span><span style=color:#75715e></span>}
+</code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-java data-lang=java><span style=color:#75715e>// Dagger generated code
+</span><span style=color:#75715e></span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>final</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>DaggerAppComponent</span> <span style=color:#66d9ef>implements</span> AppComponent <span style=color:#f92672>{</span>
+    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>final</span> AppModule appModule<span style=color:#f92672>;</span>
+    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>final</span> Application application<span style=color:#f92672>;</span>
+    <span style=color:#f92672>...</span>
+    <span style=color:#75715e>// `AppModule` contents are omitted for brevity.
+</span><span style=color:#75715e></span>
+    <span style=color:#66d9ef>public</span> <span style=color:#a6e22e>DaggerAppComponent</span><span style=color:#f92672>(</span>AppModule appModuleParam<span style=color:#f92672>,</span> Application applicationParam<span style=color:#f92672>)</span> <span style=color:#f92672>{</span>
+        <span style=color:#66d9ef>this</span><span style=color:#f92672>.</span><span style=color:#a6e22e>appModule</span> <span style=color:#f92672>=</span> appModuleParam<span style=color:#f92672>;</span>
+        <span style=color:#66d9ef>this</span><span style=color:#f92672>.</span><span style=color:#a6e22e>application</span> <span style=color:#f92672>=</span> applicationParam<span style=color:#f92672>;</span>
+        initialize<span style=color:#f92672>(</span>appModuleParam<span style=color:#f92672>,</span> applicationParam<span style=color:#f92672>);</span>
+    <span style=color:#f92672>}</span>
+
+    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>initialize</span><span style=color:#f92672>(</span><span style=color:#66d9ef>final</span> AppModule appModuleParam<span style=color:#f92672>,</span> <span style=color:#66d9ef>final</span> Application applicationParam<span style=color:#f92672>)</span> <span style=color:#f92672>{</span>
+        <span style=color:#f92672>...</span>
+    <span style=color:#f92672>}</span>
+
+    <span style=color:#a6e22e>@Override</span>
+    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>inject</span><span style=color:#f92672>(</span>CustomApplication app<span style=color:#f92672>)</span> <span style=color:#f92672>{</span> <span style=color:#75715e>// used to inject in my Application class.
+</span><span style=color:#75715e></span>        <span style=color:#f92672>...</span>
+    <span style=color:#f92672>}</span>
+<span style=color:#f92672>}</span>
+</code></pre></div><p>As you can see the <code>Component.Factory</code> or <code>Component.Builder</code> method parameters will become the arguments for the constructor & are stored in the private fields of the class. If <code>@BindInstance</code> is not be applied to the <code>create</code> method, we won&rsquo;t be seeing <code>private final Application application;</code> as dagger assumes it is only needed to construct the component and not to been used in any modules or submodules. If you try to use it within <code>Module</code> or component heirarchy then dagger will throw a compile time error as the field does not exist.</p>
+<h2 id=appmodule>AppModule</h2>
+<p>Let&rsquo;s take a real example from an app which has <code>AppModule</code> as follows.</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-kotlin data-lang=kotlin><span style=color:#66d9ef>class</span> <span style=color:#a6e22e>NetworkUtils</span> <span style=color:#a6e22e>@Inject</span> <span style=color:#66d9ef>constructor</span> (<span style=color:#f92672>..</span>.) {
+    <span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>getOkHttpBuilder</span>() : OkHttpClient.Builder { <span style=color:#f92672>..</span>. }
+    <span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>getRetrofitBuilder</span>() : Retrofit.Builder { <span style=color:#f92672>..</span>. }
+}
+
+<span style=color:#a6e22e>@Module</span>
+<span style=color:#66d9ef>class</span> <span style=color:#a6e22e>AppModule</span> {
+    <span style=color:#a6e22e>@Provides</span>
+    <span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>provideMyApi</span>(networkUtils: NetworkUtils) : IpApi {
+        <span style=color:#66d9ef>return</span> networkUtils.getRetrofitBuilder()
+            <span style=color:#f92672>..</span>.
+            .create(<span style=color:#f92672>..</span>.)
+    }
+}
+</code></pre></div><p>Whenever you add <code>@javax.inject.Inject</code> annotation, dagger will create a factory class eg: For <code>NetworkUtils</code>, <code>NetworkUtils_Factory.java</code> will be created implementing <code>dagger.internal.Factory&lt;T></code> which itself is a <code>Provider&lt;T></code>. It will also create factories for all the <code>@Provide</code> methods in your module eg: <code>AppModule_ProvideMyApiFactory</code>.</p>
+<p>A <code>Provider&lt;T></code> contains single method <code>get() : T</code> which generate or provide an instance of the <code>T</code>. The optimization happens for this <code>get() : T</code> method, whether to provide a new instance or reuse existing instance (which was cached after initialization for the first time).</p>
+<p>For this we can use scope annotations which dagger provides to create a custom scope or use an existing one (<code>@Reusable</code>, <code>@Singleton</code> in our case, we will see this later).</p>
+<p>For now, the dependencies injected in my application class would generate the follow dagger code.</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-kotlin data-lang=kotlin><span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>CustomApplication</span> : Application() {
+    <span style=color:#66d9ef>val</span> appComponent: AppComponent = DaggerAppComponent.create(<span style=color:#66d9ef>this</span>)
+
+    <span style=color:#a6e22e>@Inject</span> <span style=color:#66d9ef>lateinit</span> <span style=color:#66d9ef>var</span> myApi : MyApi
+    <span style=color:#a6e22e>@Inject</span> <span style=color:#66d9ef>lateinit</span> <span style=color:#66d9ef>var</span> networkUtils : NetworkUtils
+
+    <span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>onCreate</span>() {
+        appComponent.inject(<span style=color:#66d9ef>this</span>) <span style=color:#75715e>// using the inject method defined in `DaggerAppComponent`
+</span><span style=color:#75715e></span>        <span style=color:#f92672>..</span>.
+    }
+}
+</code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-java data-lang=java><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>final</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>DaggerAppComponent</span> <span style=color:#66d9ef>implements</span> AppComponent <span style=color:#f92672>{</span>
+    <span style=color:#f92672>...</span> <span style=color:#75715e>// from above
+</span><span style=color:#75715e></span>
+    <span style=color:#66d9ef>private</span> Provider<span style=color:#f92672>&lt;</span>MyApi<span style=color:#f92672>&gt;</span> provideMyApiProvider<span style=color:#f92672>;</span> <span style=color:#75715e>// Factory for `provideMyApi` method
+</span><span style=color:#75715e></span>
+    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>initialize</span><span style=color:#f92672>(...)</span> <span style=color:#f92672>{</span>
+        <span style=color:#75715e>// `create` or return as existing factory class.
+</span><span style=color:#75715e></span>        <span style=color:#75715e>// Remember `create` method will return a factory &amp; `get` will return an instance depending on how
+</span><span style=color:#75715e></span>        <span style=color:#75715e>// many times it has been wrapped with a Provider&lt;T&gt;.
+</span><span style=color:#75715e></span>        <span style=color:#66d9ef>this</span><span style=color:#f92672>.</span><span style=color:#a6e22e>provideMyApiProvider</span> <span style=color:#f92672>=</span> AppModule_ProvideMyApiFactory<span style=color:#f92672>.</span><span style=color:#a6e22e>create</span><span style=color:#f92672>(...,</span> NetworkUtils_Factory<span style=color:#f92672>.</span><span style=color:#a6e22e>create</span><span style=color:#f92672>());</span>
+    <span style=color:#f92672>}</span>
+
+    <span style=color:#a6e22e>@Override</span>
+    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>inject</span><span style=color:#f92672>(</span>CustomApplication app<span style=color:#f92672>)</span> <span style=color:#f92672>{</span>
+        injectApp<span style=color:#f92672>(</span>app<span style=color:#f92672>);</span>
+    <span style=color:#f92672>}</span>
+
+    <span style=color:#66d9ef>private</span> App <span style=color:#a6e22e>injectApp</span><span style=color:#f92672>(</span>CustomApplication instance<span style=color:#f92672>)</span> <span style=color:#f92672>{</span>
+        <span style=color:#75715e>// internally `provideMyApi` call will delegate the call to `AppModule.provideIpApi(...)`
+</span><span style=color:#75715e></span>        instance<span style=color:#f92672>.</span><span style=color:#a6e22e>myApi</span> <span style=color:#f92672>=</span> AppModule_ProvideMyApiFactory<span style=color:#f92672>.</span><span style=color:#a6e22e>provideMyApi</span><span style=color:#f92672>(</span>appModule<span style=color:#f92672>,</span> <span style=color:#66d9ef>new</span> NetworkUtils<span style=color:#f92672>(...));</span>
+        instance<span style=color:#f92672>.</span><span style=color:#a6e22e>networkUtils</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> NetworkUtils<span style=color:#f92672>(...);</span>
+    <span style=color:#f92672>}</span>
+<span style=color:#f92672>}</span>
+</code></pre></div><p>The <code>inject</code> method actually sets the value for the fields in the <code>CustomApplication</code>. But we observe that we are always providing a new instance of <code>NetworkUtils</code> whenever requested. Let&rsquo;s see how can we customize this behavior.</p>
+<blockquote>
+<p>Note: Similar results will be produced if we try to <code>@Provide</code> <code>NetworkUtils</code> via a module.</p>
+</blockquote>
+<h2 id=scoped-annotations>Scoped annotations</h2>
+<ul>
+<li>
+<h3 id=reusable><code>@Reusable</code></h3>
+</li>
+</ul>
+<p>From the docs,</p>
+<blockquote>
+<p><code>@Reusable</code> is useful when you want to limit the number of provisions of a type, but there is no specific lifetime over which there must be only one instance.</p>
+</blockquote>
+<p>Hmm, so it says there is no guarantee that the cached instance could be a singleton & there is a chance that it could be reinitialized (in an edge case, maybe?).</p>
+<p>Let&rsquo;s see how the generated code looks.</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-kotlin data-lang=kotlin><span style=color:#a6e22e>@Reusable</span>
+<span style=color:#66d9ef>class</span> <span style=color:#a6e22e>NetworkUtils</span> <span style=color:#a6e22e>@Inject</span> <span style=color:#66d9ef>constructor</span> (<span style=color:#f92672>..</span>.) {
+    <span style=color:#f92672>..</span>.
+}
+</code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-java data-lang=java><span style=color:#75715e>// Dagger generated code
+</span><span style=color:#75715e></span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>final</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>DaggerAppComponent</span> <span style=color:#66d9ef>implements</span> AppComponent <span style=color:#f92672>{</span>
+    <span style=color:#f92672>...</span>
+    <span style=color:#66d9ef>private</span> Provider<span style=color:#f92672>&lt;</span>NetworkUtils<span style=color:#f92672>&gt;</span> provideNetworkUtilsProvider<span style=color:#f92672>;</span>
+    <span style=color:#f92672>...</span>
+
+    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>initialize</span><span style=color:#f92672>(...)</span> <span style=color:#f92672>{</span>
+        <span style=color:#66d9ef>this</span><span style=color:#f92672>.</span><span style=color:#a6e22e>networkUtilsProvider</span> <span style=color:#f92672>=</span> SingleCheck<span style=color:#f92672>.</span><span style=color:#a6e22e>provider</span><span style=color:#f92672>(</span>NetworkUtils_Factory<span style=color:#f92672>.</span><span style=color:#a6e22e>create</span><span style=color:#f92672>(</span>provideApplicationContextProvider<span style=color:#f92672>));</span>
+    <span style=color:#f92672>}</span>
+<span style=color:#f92672>}</span>
+</code></pre></div><p>We see it wraps our factory provider using <code>SingleCheck&lt;T></code>. But what does it do?</p>
+<p>From the <code>SingleCheck&lt;T></code> docs,</p>
+<blockquote>
+<p>A Provider implementation that memoizes the result of another Provider using simple lazy initialization, not the double-checked lock pattern.</p>
+</blockquote>
+<p>So it caches the result using &ldquo;simple&rdquo; lazy initialization & is able to provide the cached instance when requested. But it could break under certain circumstances, I&rsquo;ll answer the &ldquo;when&rdquo; question later.</p>
+<ul>
+<li>
+<h3 id=singleton><code>@Singleton</code></h3>
+</li>
+</ul>
+<p>There are no restrictions on only using <code>@Singleton</code> annotation, you can create a custom one but don&rsquo;t forget to annotate your <code>@Component</code> or <code>@Subcomponent</code> with it. In my case, I annotated <code>AppComponent</code> with <code>@Singleton</code> which means any dependency annotated with <code>@Singleton</code> will bind to <code>AppComponent</code> & will live as long as <code>AppComponent</code> lives (i.e tied to the <code>Application</code>).</p>
+<p>Lets see how the generated code looks like when we annotate <code>NetworkUtils</code> with it.</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-kotlin data-lang=kotlin><span style=color:#a6e22e>@Singleton</span>
+<span style=color:#66d9ef>class</span> <span style=color:#a6e22e>NetworkUtils</span> <span style=color:#a6e22e>@Inject</span> <span style=color:#66d9ef>constructor</span> (<span style=color:#f92672>..</span>.) {
+    <span style=color:#f92672>..</span>.
+}
+</code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-java data-lang=java><span style=color:#75715e>// Dagger generated code
+</span><span style=color:#75715e></span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>final</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>DaggerAppComponent</span> <span style=color:#66d9ef>implements</span> AppComponent <span style=color:#f92672>{</span>
+    <span style=color:#f92672>...</span>
+    <span style=color:#66d9ef>private</span> Provider<span style=color:#f92672>&lt;</span>NetworkUtils<span style=color:#f92672>&gt;</span> provideNetworkUtilsProvider<span style=color:#f92672>;</span>
+    <span style=color:#f92672>...</span>
+
+    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>initialize</span><span style=color:#f92672>(...)</span> <span style=color:#f92672>{</span>
+        <span style=color:#66d9ef>this</span><span style=color:#f92672>.</span><span style=color:#a6e22e>networkUtilsProvider</span> <span style=color:#f92672>=</span> DoubleCheck<span style=color:#f92672>.</span><span style=color:#a6e22e>provider</span><span style=color:#f92672>(</span>NetworkUtils_Factory<span style=color:#f92672>.</span><span style=color:#a6e22e>create</span><span style=color:#f92672>(</span>provideApplicationContextProvider<span style=color:#f92672>));</span>
+    <span style=color:#f92672>}</span>
+<span style=color:#f92672>}</span>
+</code></pre></div><p>Instead of <code>SingleCheck&lt;T></code> we see the use of <code>DoubleCheck&lt;T></code> provider.</p>
+<p>From the <code>DoubleCheck&lt;T></code> docs,</p>
+<blockquote>
+<p>A Lazy and Provider implementation that memoizes the value returned from a delegate using the double-check idiom described in Item 71 of Effective Java 2.</p>
+</blockquote>
+<p>From this statement I know that I need to read the Item 71 of Effective Java 2 to understand lazy initialization in more depth.</p>
+<blockquote>
+<p>Note: If you inject your dependency using <code>dagger.Lazy&lt;T></code> provider then you will see <code>DoubleCheck.lazy(...)</code> in the generated code where you have to manually call <code>.get()</code> to retrieve the dependency in the calling code. The working is same but the dependency is only initialized when <code>.get()</code> is called for the first time.</p>
+</blockquote>
+<h2 id=singlecheckt-vs-doublecheckt><code>SingleCheck&lt;T></code> vs <code>DoubleCheck&lt;T></code></h2>
+<p>From the docs, we know both of these idioms are used for lazy initializations & after reading Item 71 of Effective Java 2 I&rsquo;m sure <code>DoubleCheck&lt;T></code> is thread safe. Lets explore them,</p>
+<ul>
+<li>
+<h3 id=simple-lazy-initialization-single-check-idiom>Simple lazy initialization (Single check idiom)</h3>
+</li>
+</ul>
+<p>Here I&rsquo;ve created a simple copy-paste-run sample that initializes the field lazily (no locking).</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-kotlin data-lang=kotlin><span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Box</span>
+
+<span style=color:#75715e>// Single check idiom used by `SingleCheck&lt;T&gt;`
+</span><span style=color:#75715e></span><span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Container</span> {
+    <span style=color:#66d9ef>companion</span> <span style=color:#66d9ef>object</span> {
+        <span style=color:#a6e22e>@Volatile</span> <span style=color:#75715e>// writes to this field are immediately made visible to other threads
+</span><span style=color:#75715e></span>        <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>var</span> box: Box? = <span style=color:#66d9ef>null</span>
+
+        <span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>getBox</span>() : Box {
+            <span style=color:#66d9ef>var</span> field = box
+            <span style=color:#66d9ef>if</span> (<span style=color:#66d9ef>field</span> <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) {
+                box = Box()
+                <span style=color:#66d9ef>field</span> = box
+            }
+            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>field</span><span style=color:#f92672>!!</span>
+        }
+    }
+}
+</code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-kotlin data-lang=kotlin><span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>thread1</span>() {
+    Thread {
+        <span style=color:#66d9ef>val</span> field = Container.getField()
+        println(<span style=color:#e6db74>&#34;Value from thread1: </span><span style=color:#e6db74>$field</span><span style=color:#e6db74>&#34;</span>)
+    }.start()
+}
+
+<span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>thread2</span>() {
+    Thread {
+        <span style=color:#66d9ef>val</span> field = Container.getField()
+        println(<span style=color:#e6db74>&#34;Value from thread2: </span><span style=color:#e6db74>$field</span><span style=color:#e6db74>&#34;</span>)
+    }.start()
+}
+
+<span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>main</span>() {
+    thread1()
+    thread2()
+
+   <span style=color:#75715e>/* Output
+</span><span style=color:#75715e>    * ------
+</span><span style=color:#75715e>    * Value from thread 2: Box@6ae36b9b
+</span><span style=color:#75715e>    * Value from thread 1: Box@667c6a02
+</span><span style=color:#75715e>    */</span>
+}
+</code></pre></div><p>The order of <code>println</code> is not guaranteed but we see both the accessor of <code>Box</code> in these two threads are different. This is because the <code>SingleCheck&lt;T></code> idiom is not thread safe & could cause repeated initialization when we try to access the field from different threads at the same time.</p>
+<ul>
+<li>
+<h3 id=double-check-idiom-locking-pattern>Double check idiom (locking pattern)</h3>
+</li>
+</ul>
+<p>The way this idiom is implemented is first we check the field if it is uninitialized without locking, then we lock the object & again check the field if uninitialized. If it appears to be uninitialized the second time we initialize the field & return it in both the cases.</p>
+<p>We modify the <code>Container</code> class to follow this idiom & run the <code>main</code> function again.</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-kotlin data-lang=kotlin><span style=color:#75715e>// Double check idiom (thread safe) used by `DoubleCheck&lt;T&gt;`
+</span><span style=color:#75715e></span><span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Container</span> {
+    <span style=color:#66d9ef>companion</span> <span style=color:#66d9ef>object</span> {
+        <span style=color:#a6e22e>@Volatile</span>
+        <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>var</span> box: Box? = <span style=color:#66d9ef>null</span>
+
+        <span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>getField</span>() : Box {
+            <span style=color:#66d9ef>var</span> field = box
+            <span style=color:#66d9ef>if</span> (<span style=color:#66d9ef>field</span> <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) {
+                synchronized(<span style=color:#66d9ef>this</span>) {
+                    <span style=color:#66d9ef>field</span> = box
+                    <span style=color:#66d9ef>if</span> (<span style=color:#66d9ef>field</span> <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) {
+                        box = Box()
+                        <span style=color:#66d9ef>field</span> = box
+                    }
+                }
+            }
+            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>field</span><span style=color:#f92672>!!</span>
+        }
+    }
+}
+</code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-kotlin data-lang=kotlin><span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>main</span>() {
+    thread1()
+    thread2()
+
+   <span style=color:#75715e>/* Output
+</span><span style=color:#75715e>    * ------
+</span><span style=color:#75715e>    * Value from thread 2: Box@6b925f95
+</span><span style=color:#75715e>    * Value from thread 1: Box@6b925f95
+</span><span style=color:#75715e>    */</span>
+}
+</code></pre></div><p>We&rsquo;ve achieved thread safety as both the threads have the same instance of <code>Box</code>.</p>
+<h2 id=conclusion>Conclusion</h2>
+<ul>
+<li>The optimization happens only on <code>Provider&lt;T>.get(T)</code> which could be recursive, hence some checks like <code>DoubleCheck&lt;T>.reentrantCheck</code> are made to avoid transitivity.</li>
+<li>If we use <code>@Reusable</code> then dagger caches the factory provider using <code>SingleCheck&lt;T></code> idiom which is not thread safe & can cause repeated initialization if the field is accessed from different threads at the same time. Hence, the docs says &ldquo;limit the number of provisions of a type&rdquo; not a single instance.</li>
+<li>Using <code>@Singleton</code> or injecting via <code>dagger.Lazy&lt;T></code> caches the factory provider using <code>DoubleCheck&lt;T></code> idiom which is thread safe.</li>
+</ul>
+<style>pre code,pre,code{white-space:pre!important;overflow-x:auto!important;word-break:keep-all!important;word-wrap:initial!important}</style>
+<div class=blog-tags>
+<a href=https://kaustubhpatange.github.io/blog/tags/android/>android</a>&nbsp;
+<a href=https://kaustubhpatange.github.io/blog/tags/di/>di</a>&nbsp;
+</div>
+</article>
+</div>
+<footer>
+<div class=social-icons>
+<a href=index.xml name=rss>
+<em class="fa fa-rss"></em>
+</a>
+&nbsp;&ndash;&nbsp;
+<a href=https://github.com/KaustubhPatange/blog name=github>
+<em class="fab fa-github"></em>
+</a>
+</div>
+<div class=container>
+<p class="credits copyright">
+<a href=https://kaustubhpatange.github.io/>Kaustubh Patange</a>
+&nbsp;&copy;
+2021
+&nbsp;/&nbsp;
+<a href=https://kaustubhpatange.github.io/blog/>Blog</a>
+&nbsp;&ndash;&nbsp;
+<em class="fas fa-moon" id=dark-mode-toggle></em>
+</p>
+<p class="credits theme-by">
+Powered By <a href=https://gohugo.io>Hugo</a>&nbsp;
+Theme
+<a href=https://github.com/matsuyoshi30/harbor>Harbor</a>
+</p>
+</div>
+</footer>
+</body>
+</html>
