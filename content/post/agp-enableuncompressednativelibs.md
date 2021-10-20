@@ -53,6 +53,9 @@ Disabling the optimization leads to bigger APKs on users devices since the nativ
         word-break: keep-all !important;
         word-wrap: initial !important;
     }
+    .article {
+        text-align: start;
+    } 
 </style>
 
 {{< /css.inline >}}

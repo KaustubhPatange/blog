@@ -325,6 +325,9 @@ We've achieved thread safety as both the threads have the same instance of `Box`
         word-break: keep-all !important;
         word-wrap: initial !important;
     }
+    .article {
+        text-align: start;
+    }  
 </style>
 
 {{< /css.inline >}}

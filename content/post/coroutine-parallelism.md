@@ -96,6 +96,9 @@ suspend fun parallelReturnType() : List<String> = CoroutineScope(Dispatchers.Def
         word-break: keep-all !important;
         word-wrap: initial !important;
     }
+    .article {
+        text-align: start;
+    } 
 </style>
 
 {{< /css.inline >}}
