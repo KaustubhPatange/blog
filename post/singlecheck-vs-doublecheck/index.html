@@ -302,7 +302,7 @@ Dagger's implementation of JSR 330
 <li>If we use <code>@Reusable</code> then dagger caches the factory provider using <code>SingleCheck&lt;T></code> idiom which is not thread safe & can cause repeated initialization if the field is accessed from different threads at the same time. Hence, the docs says &ldquo;limit the number of provisions of a type&rdquo; not a single instance.</li>
 <li>Using <code>@Singleton</code> or injecting via <code>dagger.Lazy&lt;T></code> caches the factory provider using <code>DoubleCheck&lt;T></code> idiom which is thread safe.</li>
 </ul>
-<style>pre code,pre,code{white-space:pre!important;overflow-x:auto!important;word-break:keep-all!important;word-wrap:initial!important}</style>
+<style>pre code,pre,code{white-space:pre!important;overflow-x:auto!important;word-break:keep-all!important;word-wrap:initial!important}.article{text-align:start}</style>
 <div class=blog-tags>
 <a href=https://kaustubhpatange.github.io/blog/tags/android/>android</a>&nbsp;
 <a href=https://kaustubhpatange.github.io/blog/tags/di/>di</a>&nbsp;
