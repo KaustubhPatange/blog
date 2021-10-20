@@ -69,6 +69,11 @@ canonifyurls = true
   url="index.xml"
   icon="fa fa-rss"
 
+[[params.social]]
+  name= "github"
+  url="https://github.com/KaustubhPatange/blog"
+  icon="fab fa-github"
+
 [params.logo]
   icon = "fa-arrow-left"
   url = "icon.svg" # static/images/icon.png
