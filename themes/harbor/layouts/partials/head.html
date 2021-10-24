@@ -1,34 +1,37 @@
 <meta charset="utf-8" />
 <title>{{ .Title }}</title>
-{{ with .Site.Params.description }}
-  <meta name="description" content="{{ . }}" />
+<meta property="og:title" content="{{ .Title }}" />
+<meta property="og:description"
+  content="{{ with .Description }}{{ . }}{{ else }}{{if .IsPage}}{{ .Summary }}{{ else }}{{ with .Site.Params.description }}{{ . }}{{ end }}{{ end }}{{ end -}}" />
+
+{{ if isset .Params "cover" }}
+{{ if in .Params.cover "http"}}
+<meta property="og:image" content="{{ .Params.cover }}" />
+{{ else }}
+<meta property="og:image" content="{{ .Site.BaseURL }}{{ .Params.cover }}" />
 {{ end }}
-{{- with .Site.Author.Name }}
-  <meta name="author" content="{{ . }}" />
+{{ end }}
+
+{{ with .Site.Params.description }}
+<meta name="description" content="{{ . }}" />
+{{ end }}
+{{- with .Site.Params.author }}
+<meta name="author" content="{{ . }}" />
 {{- end }}
 {{ partial "analytics.html" . }}
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<link
-  rel="alternate"
-  type="application/rss+xml"
-  href="{{ .Site.BaseURL }}index.xml"
-  title="{{ .Site.Title }}"
-/>
+<link rel="alternate" type="application/rss+xml" href="{{ .Site.BaseURL }}index.xml" title="{{ .Site.Title }}" />
 {{ template "_internal/twitter_cards.html" . }}
 {{ if isset .Site.Taxonomies "series" }}
-  {{ template "_internal/opengraph.html" . }}
+{{ template "_internal/opengraph.html" . }}
 {{ end }}
 <!-- Stylesheets -->
 <link rel="stylesheet" href="{{ .Site.BaseURL }}fontawesome/css/all.min.css" />
 {{ range .Site.Params.customCSS }}
-  <link rel="stylesheet" href="{{ . | absURL }}" />
+<link rel="stylesheet" href="{{ . | absURL }}" />
 {{ end }}
-<link
-  id="dark-mode-theme"
-  rel="stylesheet"
-  href="{{ .Site.BaseURL }}css/dark.css"
-/>
+<link id="dark-mode-theme" rel="stylesheet" href="{{ .Site.BaseURL }}css/dark.css" />
 <!-- Load theme mode from browser cache -->
 <script>
   var darkTheme = document.getElementById('dark-mode-theme')

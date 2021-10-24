@@ -1,6 +1,7 @@
 +++
 author = "Kaustubh Patange"
 title = "Dagger's implementation of JSR 330"
+cover = "images/dagger-singlecheck-vs-doublecheck.png"
 date = "2021-10-19"
 tags = [
     "android", "di"
