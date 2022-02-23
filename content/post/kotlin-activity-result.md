@@ -55,7 +55,7 @@ fun ComponentActivity.startActivityWithResult(
 ) : Unit = launchContractWithResult(input, ActivityResultContracts.StartActivityForResult(), onActivityResult)
 ```
 
-Now using this is pretty simple as you just've to call it whenever you want to listen for activity result for an intent maybe on a button click or something else,
+Now using this is pretty simple as you just've to call it wherever you want to listen for activity result for an intent maybe on a button click or something else,
 
 ```kotlin
 class MainActivity : ComponentActivity() {
