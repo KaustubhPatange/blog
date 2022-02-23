@@ -1,0 +1,136 @@
+<!doctype html><html lang=en>
+<head>
+<meta charset=utf-8>
+<title>Handle onActivityResult(), the Kotlin way</title>
+<meta property="og:title" content="Handle onActivityResult(), the Kotlin way">
+<meta property="og:description" content="ActivityResult API is an improvement over the traditional onActivityResult() method. But it can get much better with Kotlin, let&rsquo;s see how?">
+<meta name=description content="ActivityResult API is an improvement over the traditional onActivityResult() method. But it can get much better with Kotlin, let&rsquo;s see how?">
+<meta property="og:image" content="https://kaustubhpatange.github.io/blog/images/kotlin-activity-result.png">
+<meta http-equiv=x-ua-compatible content="IE=edge">
+<meta name=viewport content="width=device-width,initial-scale=1">
+<link rel=alternate type=application/rss+xml href=https://kaustubhpatange.github.io/blog/index.xml title=Blog>
+<meta name=twitter:card content="summary">
+<meta name=twitter:title content="Handle onActivityResult(), the Kotlin way">
+<meta name=twitter:description content="ActivityResult API is an improvement over the traditional onActivityResult() method. But it can get much better with Kotlin, let&rsquo;s see how?">
+<link rel=stylesheet href=https://kaustubhpatange.github.io/blog/fontawesome/css/all.min.css>
+<link id=dark-mode-theme rel=stylesheet href=https://kaustubhpatange.github.io/blog/css/dark.css>
+<script>var darkTheme=document.getElementById('dark-mode-theme'),storedTheme=localStorage.getItem('dark-mode-storage');storedTheme==='dark'?darkTheme.disabled=!1:storedTheme==='light'&&(darkTheme.disabled=!0)</script>
+<script src=https://kaustubhpatange.github.io/blog/js/main.bundle.js></script>
+<script src=https://kaustubhpatange.github.io/blog/js/instantpage.min.js type=module defer></script>
+<meta name=generator content="Hugo 0.92.2">
+</head>
+<body>
+<header>
+<nav class=navbar>
+<style>.logo{font-size:1.5rem;margin-top:-3px;padding:0;float:left}@media(max-width:600px){.logo{font-size:1.1rem}}</style>
+<div class=nav>
+<a href=https://kaustubhpatange.github.io/blog/ class=logo>
+<i class="fa fa-arrow-left"></i>
+</a>
+<ul class=nav-links>
+<li>
+<a href=https://kaustubhpatange.github.io/blog/tags id=Tags><em class="fas fa-tag fa-lg"></em></a>
+</li>
+<li>
+<a href=https://kaustubhpatange.github.io/blog/search id=Search><em class="fas fa-search fa-lg"></em></a>
+</li>
+</ul>
+</div>
+</nav>
+<div class=intro-header>
+<div class=container>
+<div class=post-heading>
+<h1>
+Handle onActivityResult(), the Kotlin way
+</h1>
+<span class=meta-post>
+<em class="fa fa-calendar-alt"></em>&nbsp;Feb 22, 2022
+</span>
+</div>
+</div>
+</div>
+</header>
+<div class=container role=main>
+<article class=article class=blog-post>
+<p>ActivityResult API is an improvement over the traditional <code>onActivityResult()</code> method. But it can get much better with Kotlin, let&rsquo;s see how?</p>
+<p>Traditionally we are used to the catch Activity results in <code>onActivityResult()</code> method overrides that Activity/Fragment has, with Jetpack Activity <code>v1.2.0-alpha02</code>, <a href=https://developer.android.com/jetpack/androidx/releases/activity#1.2.0-alpha02>ActivityResultRegistry</a> was introduced which allowed us to register for activity result & made handling the result much efficiently.</p>
+<p>The working is pretty simple, <code>ActivityRegistry</code> maintains a map of <code>key: String</code> to a <code>ActivityResultCallback</code> and invokes it whenever <code>ComponentActivity</code>&rsquo;s <code>onActivityResult()</code> is called by first verifying the contract which was used to execute the required input & then invokes the appropriate <code>ActivityResultCallback</code> from the <code>map</code>.</p>
+<h2 id=limitations>Limitations</h2>
+<p>You can only register before <code>onStart</code>, in other words with each call to <code>registerForActivityResult()</code> a <code>LifecycleOwner</code> is passed which is used to check whether you are calling this method before <code>onStart</code>, if not it throws an <code>IllegalStateException</code>.</p>
+<p>This limitation can cause various problems where if you register the callback after a button is clicked it would simply not work. This is why I think <code>registerForActivityResult()</code> methods are not meant for listening one shot Activity Result.</p>
+<h2 id=solution>Solution</h2>
+<p>Jetpack compose does it differently, if you look at the code of <a href="https://cs.android.com/androidx/platform/frameworks/support/+/androidx-main:activity/activity-compose/src/main/java/androidx/activity/compose/ActivityResultRegistry.kt;l=82?q=rememberLauncherForActivityResult"><code>rememberLauncherForActivityResult()</code></a> you&rsquo;ll see it makes use of <code>ComponentActivity</code>&rsquo;s <code>ActivityResultRegistery</code> to register the callback when the composition is started & unregister when the composition is disposed/abandoned (<code>DisposableEffect</code>).</p>
+<p>We can apply this logic to construct something similar,</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-kotlin data-lang=kotlin><span style=color:#66d9ef>fun</span> &lt;<span style=color:#a6e22e>I</span>, <span style=color:#a6e22e>O</span>&gt; <span style=color:#a6e22e>ComponentActivity</span>.launchWithResult(
+    input: I,
+    contract: ActivityResultContract&lt;I, O&gt;,
+    onResult: (O) <span style=color:#f92672>-&gt;</span> Unit
+) {
+    <span style=color:#66d9ef>val</span> contractKey = <span style=color:#e6db74>&#34;contract_</span><span style=color:#e6db74>${UUID.randomUUID()}</span><span style=color:#e6db74>&#34;</span>
+    <span style=color:#66d9ef>var</span> launcher: ActivityResultLauncher&lt;I?&gt;? = <span style=color:#66d9ef>null</span>
+    launcher = activityResultRegistry.register(contractKey, contract) { result <span style=color:#f92672>-&gt;</span>
+        launcher<span style=color:#f92672>?.</span>unregister()
+        onResult(result)
+    }
+    launcher.launch(input)
+}
+</code></pre></div><p>What are we doing here is simply registering a contract with a unique key & unregistering the contract when the result is obtained, thus making this a one shot listener for Activity Result.</p>
+<p>We can built another extension function on top of it to listen for <code>onActivityResult()</code>,</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-kotlin data-lang=kotlin><span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>ComponentActivity</span>.startActivityWithResult(
+    input: Intent,
+    onActivityResult: (ActivityResult) <span style=color:#f92672>-&gt;</span> Unit
+) : Unit = launchContractWithResult(input, ActivityResultContracts.StartActivityForResult(), onActivityResult)
+</code></pre></div><p>Now using this is pretty simple as you just&rsquo;ve to call it whenever you want to listen for activity result for an intent maybe on a button click or something else,</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-kotlin data-lang=kotlin><span style=color:#66d9ef>class</span> <span style=color:#a6e22e>MainActivity</span> : ComponentActivity() {
+    <span style=color:#66d9ef>override</span> <span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>onCreate</span>(<span style=color:#f92672>..</span>.) {
+        <span style=color:#f92672>..</span>.
+        binding.btnLogin.setOnClickListener {
+            <span style=color:#66d9ef>val</span> intent: Intent = <span style=color:#f92672>..</span>.
+            startActivityWithResult(intent) { result <span style=color:#f92672>-&gt;</span>  <span style=color:#75715e>// &lt;--
+</span><span style=color:#75715e></span>                <span style=color:#75715e>// do something with the result.
+</span><span style=color:#75715e></span>            }
+        }
+    }
+}
+</code></pre></div><p>Here is full <a href=https://gist.github.com/KaustubhPatange/bb70d2bfdacfe6cbea077f73c492e975>gist of extension functions</a> which you might find helpful for such use cases.</p>
+<h2 id=conclusion>Conclusion</h2>
+<ul>
+<li>The API is not bad we just have to find such workarounds (or maybe not a workaround as Jetpack Compose is doing it) to find a solution to the problem we&rsquo;ve.</li>
+<li>You can also convert this callback into a suspend function using <code>suspendCoroutine</code> so that you can use it in a <code>CoroutineScope</code> or inside a suspend function whose <code>coroutineContext</code> is <code>Dispatchers.Main</code>.</li>
+</ul>
+<style>pre code,pre,code{white-space:pre!important;overflow-x:auto!important;word-break:keep-all!important;word-wrap:initial!important}.article{text-align:start}a{text-decoration:underline}</style>
+<div class=blog-tags>
+<a href=https://kaustubhpatange.github.io/blog/tags/android/>android</a>&nbsp;
+<a href=https://kaustubhpatange.github.io/blog/tags/kotlin/>kotlin</a>&nbsp;
+</div>
+</article>
+</div>
+<footer>
+<div class=social-icons>
+<a href=index.xml name=rss>
+<em class="fa fa-rss"></em>
+</a>
+&nbsp;&ndash;&nbsp;
+<a href=https://github.com/KaustubhPatange/blog name=github>
+<em class="fab fa-github"></em>
+</a>
+</div>
+<div class=container>
+<p class="credits copyright">
+<a href=https://kaustubhpatange.github.io/>Kaustubh Patange</a>
+&nbsp;&copy;
+2021
+&nbsp;/&nbsp;
+<a href=https://kaustubhpatange.github.io/blog/>Blog</a>
+&nbsp;&ndash;&nbsp;
+<em class="fas fa-moon" id=dark-mode-toggle></em>
+</p>
+<p class="credits theme-by">
+Powered By <a href=https://gohugo.io>Hugo</a>&nbsp;
+Theme
+<a href=https://github.com/matsuyoshi30/harbor>Harbor</a>
+</p>
+</div>
+</footer>
+</body>
+</html>
