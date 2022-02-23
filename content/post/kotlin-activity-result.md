@@ -14,7 +14,7 @@ ActivityResult API is an improvement over the traditional `onActivityResult()` m
 
 Traditionally we are used to the catch Activity results in `onActivityResult()` method overrides that Activity/Fragment has, with Jetpack Activity `v1.2.0-alpha02`, [ActivityResultRegistry](https://developer.android.com/jetpack/androidx/releases/activity#1.2.0-alpha02) was introduced which allowed us to register for activity result & made handling the result much efficiently.
 
-The working is pretty simple, `ActivityRegistry` maintains a map of `key: String` to a `ActivityResultCallback` and invokes it whenever `ComponentActivity`'s `onActivityResult()` is called by first verifying the contract which was used to execute the required input & then invokes the appropriate `ActivityResultCallback` from the `map`.
+The working is pretty simple, `ActivityResultRegistry` maintains a map of `key: String` to a `ActivityResultCallback` and invokes it whenever `ComponentActivity`'s `onActivityResult()` is called by first verifying the contract which was used to execute the required input & then invokes the appropriate `ActivityResultCallback` from the `map`.
 
 ## Limitations
 
