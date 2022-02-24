@@ -22,7 +22,7 @@ You can only register before `onStart`, in other words with each call to `regist
 
 This limitation can cause various problems where if you register the callback after a button is clicked it would simply not work. Although this limitation is technically needed to ensure that the API works properly, we'll see it later.
 
-## Novice way
+## Approach to solution (novice way)
 
 _Note: Do not try this in production._
 
