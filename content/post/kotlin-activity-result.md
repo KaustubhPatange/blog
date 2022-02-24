@@ -20,9 +20,11 @@ The working is pretty simple, `ActivityResultRegistry` maintains a map of `key: 
 
 You can only register before `onStart`, in other words with each call to `registerForActivityResult()` a `LifecycleOwner` is passed which is used to check whether you are calling this method before `onStart`, if not it throws an `IllegalStateException`.
 
-This limitation can cause various problems where if you register the callback after a button is clicked it would simply not work. This is why I think `registerForActivityResult()` methods are not meant for listening one shot Activity Result.
+This limitation can cause various problems where if you register the callback after a button is clicked it would simply not work. Although this limitation is technically needed to ensure that the API works properly, we'll see it later.
 
-## Solution
+## Novice way
+
+_Note: Do not try this in production._
 
 Jetpack compose does it differently, if you look at the code of [`rememberLauncherForActivityResult()`](https://cs.android.com/androidx/platform/frameworks/support/+/androidx-main:activity/activity-compose/src/main/java/androidx/activity/compose/ActivityResultRegistry.kt;l=82?q=rememberLauncherForActivityResult) you'll see it makes use of `ComponentActivity`'s `ActivityResultRegistery` to register the callback when the composition is started & unregister when the composition is disposed/abandoned (`DisposableEffect`).
 
@@ -71,12 +73,42 @@ class MainActivity : ComponentActivity() {
 }
 ```
 
-Here is full [gist of extension functions](https://gist.github.com/KaustubhPatange/bb70d2bfdacfe6cbea077f73c492e975) which you might find helpful for such use cases.
+## Configuration change & Process death
+
+The above code will not survive configuration & process death, in other words if you call `startActivityWithResult()` after a button click (or similar case where manual trigger is required) where an Activity is displayed & suppose you rotate the device (which will recreate all the activities in backstack including the current one), then you'll not get the required result on the callback function you've passed as a parameter to the method.
+
+**Why?** Since during configuration or process death all your current as well as previous activity gets recreated, the callback lambda which you pass get's cleared from the memory hence you don't recieve a call to it.
+
+The idea is to register it in `OnCreate()` i.e in any of Activity/Fragment methods & then execute the input,
+
+```kotlin
+class MainActivity : Fragment() {
+    private lateinit var launcher: ActivityResultLauncher<Intent> // <--
+    override fun onViewCreated(...) {
+        ...
+        launcher = requireActivity().activityResultRegistry.register("a-key", contract) { result -> // <--
+            // do something with result,
+        }
+        binding.btnLogin.setOnClickListener {
+            val intent: Intent = ...
+            launcher.launch(intent)
+        }
+    }
+    // In an Activity you don't need to unregister as it will happen automatically,
+    override fun onDestroyView(...) {
+        launcher.unregister() // <--
+    }
+}
+```
+
+Registeration must be done through a unique key which should survive configuration or process death, hence `UUID.randomUUID()` will not work. Now whenever configuration change happens or process death happens, after restarting Activity/Fragment it will re-register the callback with the same key we've used where we'll safely get the result in our callback.
+
+Did you see what we've done? In a way we've implemented `registerForActivityResult()`, but the only difference here is we are registering using a custom key. But why not use `registerForActivityResult()` if we're doing the same thing? The thing is we can't register multiple callbacks for the same contract when using `registerForActivityResult()`, hence we directly use `ComponentActivity`'s `ActivityResultRegistry` to do so. If your requirement is to have a single callback for a contract then sure go with `registerForActivityResult()` as it'll automatically unregister itself when the `LifecycleOwner`'s lifecycle is destroyed.
 
 ## Conclusion
 
-- The API is not bad we just have to find such workarounds (or maybe not a workaround as Jetpack Compose is doing it) to find a solution to the problem we've.
-- You can also convert this callback into a suspend function using `suspendCoroutine` so that you can use it in a `CoroutineScope` or inside a suspend function whose `coroutineContext` is `Dispatchers.Main`.
+- There is no such limitation for this API, what we saw was to ensure that it should just work across configuration & process death. That's why you need to register it before `onStart` of Activity or `onCreate` of Fragment.
+- The reason why Jetpack Compose's `rememberLauncherForActivityResult()` works out of box is because for each Composable function there is an entry & an exit point. Entry being when composition is started & exit being when the composition is disposed/abandoned. Since you get this lifecycle out of the box you can easily make use of it to register & unregister the callback at the appropriate time.
 
 {{< css.inline >}}
 
