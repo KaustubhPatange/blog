@@ -57,8 +57,9 @@ Handle onActivityResult(), the Kotlin way
 <p>The working is pretty simple, <code>ActivityResultRegistry</code> maintains a map of <code>key: String</code> to a <code>ActivityResultCallback</code> and invokes it whenever <code>ComponentActivity</code>&rsquo;s <code>onActivityResult()</code> is called by first verifying the contract which was used to execute the required input & then invokes the appropriate <code>ActivityResultCallback</code> from the <code>map</code>.</p>
 <h2 id=limitations>Limitations</h2>
 <p>You can only register before <code>onStart</code>, in other words with each call to <code>registerForActivityResult()</code> a <code>LifecycleOwner</code> is passed which is used to check whether you are calling this method before <code>onStart</code>, if not it throws an <code>IllegalStateException</code>.</p>
-<p>This limitation can cause various problems where if you register the callback after a button is clicked it would simply not work. This is why I think <code>registerForActivityResult()</code> methods are not meant for listening one shot Activity Result.</p>
-<h2 id=solution>Solution</h2>
+<p>This limitation can cause various problems where if you register the callback after a button is clicked it would simply not work. Although this limitation is technically needed to ensure that the API works properly, we&rsquo;ll see it later.</p>
+<h2 id=novice-way>Novice way</h2>
+<p><em>Note: Do not try this in production.</em></p>
 <p>Jetpack compose does it differently, if you look at the code of <a href="https://cs.android.com/androidx/platform/frameworks/support/+/androidx-main:activity/activity-compose/src/main/java/androidx/activity/compose/ActivityResultRegistry.kt;l=82?q=rememberLauncherForActivityResult"><code>rememberLauncherForActivityResult()</code></a> you&rsquo;ll see it makes use of <code>ComponentActivity</code>&rsquo;s <code>ActivityResultRegistery</code> to register the callback when the composition is started & unregister when the composition is disposed/abandoned (<code>DisposableEffect</code>).</p>
 <p>We can apply this logic to construct something similar,</p>
 <div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-kotlin data-lang=kotlin><span style=color:#66d9ef>fun</span> &lt;<span style=color:#a6e22e>I</span>, <span style=color:#a6e22e>O</span>&gt; <span style=color:#a6e22e>ComponentActivity</span>.launchWithResult(
@@ -92,11 +93,33 @@ Handle onActivityResult(), the Kotlin way
         }
     }
 }
-</code></pre></div><p>Here is full <a href=https://gist.github.com/KaustubhPatange/bb70d2bfdacfe6cbea077f73c492e975>gist of extension functions</a> which you might find helpful for such use cases.</p>
+</code></pre></div><h2 id=configuration-change--process-death>Configuration change & Process death</h2>
+<p>The above code will not survive configuration & process death, in other words if you call <code>startActivityWithResult()</code> after a button click (or similar case where manual trigger is required) where an Activity is displayed & suppose you rotate the device (which will recreate all the activities in backstack including the current one), then you&rsquo;ll not get the required result on the callback function you&rsquo;ve passed as a parameter to the method.</p>
+<p><strong>Why?</strong> Since during configuration or process death all your current as well as previous activity gets recreated, the callback lambda which you pass get&rsquo;s cleared from the memory hence you don&rsquo;t recieve a call to it.</p>
+<p>The idea is to register it in <code>OnCreate()</code> i.e in any of Activity/Fragment methods & then execute the input,</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-kotlin data-lang=kotlin><span style=color:#66d9ef>class</span> <span style=color:#a6e22e>MainActivity</span> : Fragment() {
+    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>lateinit</span> <span style=color:#66d9ef>var</span> launcher: ActivityResultLauncher&lt;Intent&gt; <span style=color:#75715e>// &lt;--
+</span><span style=color:#75715e></span>    <span style=color:#66d9ef>override</span> <span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>onViewCreated</span>(<span style=color:#f92672>..</span>.) {
+        <span style=color:#f92672>..</span>.
+        launcher = requireActivity().activityResultRegistry.register(<span style=color:#e6db74>&#34;a-key&#34;</span>, contract) { result <span style=color:#f92672>-&gt;</span> <span style=color:#75715e>// &lt;--
+</span><span style=color:#75715e></span>            <span style=color:#75715e>// do something with result,
+</span><span style=color:#75715e></span>        }
+        binding.btnLogin.setOnClickListener {
+            <span style=color:#66d9ef>val</span> intent: Intent = <span style=color:#f92672>..</span>.
+            launcher.launch(intent)
+        }
+    }
+    <span style=color:#75715e>// In an Activity you don&#39;t need to unregister as it will happen automatically,
+</span><span style=color:#75715e></span>    <span style=color:#66d9ef>override</span> <span style=color:#66d9ef>fun</span> <span style=color:#a6e22e>onDestroyView</span>(<span style=color:#f92672>..</span>.) {
+        launcher.unregister() <span style=color:#75715e>// &lt;--
+</span><span style=color:#75715e></span>    }
+}
+</code></pre></div><p>Registeration must be done through a unique key which should survive configuration or process death, hence <code>UUID.randomUUID()</code> will not work. Now whenever configuration change happens or process death happens, after restarting Activity/Fragment it will re-register the callback with the same key we&rsquo;ve used where we&rsquo;ll safely get the result in our callback.</p>
+<p>Did you see what we&rsquo;ve done? In a way we&rsquo;ve implemented <code>registerForActivityResult()</code>, but the only difference here is we are registering using a custom key. But why not use <code>registerForActivityResult()</code> if we&rsquo;re doing the same thing? The thing is we can&rsquo;t register multiple callbacks for the same contract when using <code>registerForActivityResult()</code>, hence we directly use <code>ComponentActivity</code>&rsquo;s <code>ActivityResultRegistry</code> to do so. If your requirement is to have a single callback for a contract then sure go with <code>registerForActivityResult()</code> as it&rsquo;ll automatically unregister itself when the <code>LifecycleOwner</code>&rsquo;s lifecycle is destroyed.</p>
 <h2 id=conclusion>Conclusion</h2>
 <ul>
-<li>The API is not bad we just have to find such workarounds (or maybe not a workaround as Jetpack Compose is doing it) to find a solution to the problem we&rsquo;ve.</li>
-<li>You can also convert this callback into a suspend function using <code>suspendCoroutine</code> so that you can use it in a <code>CoroutineScope</code> or inside a suspend function whose <code>coroutineContext</code> is <code>Dispatchers.Main</code>.</li>
+<li>There is no such limitation for this API, what we saw was to ensure that it should just work across configuration & process death. That&rsquo;s why you need to register it before <code>onStart</code> of Activity or <code>onCreate</code> of Fragment.</li>
+<li>The reason why Jetpack Compose&rsquo;s <code>rememberLauncherForActivityResult()</code> works out of box is because for each Composable function there is an entry & an exit point. Entry being when composition is started & exit being when the composition is disposed/abandoned. Since you get this lifecycle out of the box you can easily make use of it to register & unregister the callback at the appropriate time.</li>
 </ul>
 <style>pre code,pre,code{white-space:pre!important;overflow-x:auto!important;word-break:keep-all!important;word-wrap:initial!important}.article{text-align:start}a{text-decoration:underline}</style>
 <div class=blog-tags>
