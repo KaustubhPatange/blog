@@ -58,7 +58,7 @@ Handle onActivityResult(), the Kotlin way
 <h2 id=limitations>Limitations</h2>
 <p>You can only register before <code>onStart</code>, in other words with each call to <code>registerForActivityResult()</code> a <code>LifecycleOwner</code> is passed which is used to check whether you are calling this method before <code>onStart</code>, if not it throws an <code>IllegalStateException</code>.</p>
 <p>This limitation can cause various problems where if you register the callback after a button is clicked it would simply not work. Although this limitation is technically needed to ensure that the API works properly, we&rsquo;ll see it later.</p>
-<h2 id=novice-way>Novice way</h2>
+<h2 id=approach-to-solution-novice-way>Approach to solution (novice way)</h2>
 <p><em>Note: Do not try this in production.</em></p>
 <p>Jetpack compose does it differently, if you look at the code of <a href="https://cs.android.com/androidx/platform/frameworks/support/+/androidx-main:activity/activity-compose/src/main/java/androidx/activity/compose/ActivityResultRegistry.kt;l=82?q=rememberLauncherForActivityResult"><code>rememberLauncherForActivityResult()</code></a> you&rsquo;ll see it makes use of <code>ComponentActivity</code>&rsquo;s <code>ActivityResultRegistery</code> to register the callback when the composition is started & unregister when the composition is disposed/abandoned (<code>DisposableEffect</code>).</p>
 <p>We can apply this logic to construct something similar,</p>
