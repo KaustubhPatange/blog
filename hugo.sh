@@ -7,4 +7,5 @@ then
 fi
 
 echo "Transpiling..."
+git pull
 hugo
