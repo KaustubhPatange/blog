@@ -1,5 +1,5 @@
 theme = "harbor"
-baseurl = "https://kaustubhpatange.github.io/blog/"
+baseurl = "https://kaustubhpatange.com/blog/"
 title = "Blog"
 paginate = 5
 languageCode = "en"
