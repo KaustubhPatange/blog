@@ -32,10 +32,9 @@ jobs:
           DECODED=$(echo $PEM | base64 --decode)
           echo $DECODED >> __key.pem
           sed 's/\\n/\n/g' __key.pem >> key.pem
-          cat key.pem
           chmod 400 key.pem
 
       - name: Updating remote instance
         run: |
           export EC2_IP=${{secrets.AWS_EC2_ELASTIC_IP}}
-          ssh -i key.pem -o "StrictHostKeyChecking no" ubuntu@$EC2_IP "cd /blog; bash hugo.sh"
+          ssh -i key.pem -p 224 -o "StrictHostKeyChecking no" ubuntu@$EC2_IP "cd /blog; bash hugo.sh"
