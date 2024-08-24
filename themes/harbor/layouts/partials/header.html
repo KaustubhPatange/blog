@@ -16,9 +16,9 @@
       <div class="container">
         <div class="{{ .Type }}-heading">
           {{ if eq .Type "list" }}
-            <h1>{{ if .Data.Singular }}#{{ end }}{{ .Title }}</h1>
+            <h1 style="font-size:35px;font-weight:bold;">{{ if .Data.Singular }}#{{ end }}{{ .Title }}</h1>
             {{ else }}
-            <h1>
+            <h1 style="font-size:35px;font-weight:bold;">
               {{ with $title }}{{ . }}{{ else }}<br />{{ end }}
             </h1>
           {{ end }}

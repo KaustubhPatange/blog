@@ -1,17 +1,20 @@
-<article class="post-preview">
+<article class="post-preview" style="padding-top:5px;">
   <a href="{{ .Permalink }}">
-    <h2 class="post-title">{{ .Title }}</h2>
+    <h1 style="font-weight: bold;font-size:1.15em;margin:0px;">{{ .Title }}</h1>
   </a>
-  <div class="post-entry">
-    {{ if .Truncated }}
-      <p>{{ .Summary }}</p>
-      <a href="{{ .Permalink }}" class="post-read-more"
-        >{{ i18n "read-more" }}</a
-      >
-    {{ end }}
-  </div>
+  <!-- <div class="post-entry"> -->
+    <!-- {{ if .Truncated }} -->
+    <!--   <p>{{ .Summary }}</p> -->
+    <!--   <a href="{{ .Permalink }}" class="post-read-more" -->
+    <!--     >{{ i18n "read-more" }}</a -->
+    <!--   > -->
+    <!-- {{ end }} -->
+  <!-- </div> -->
 
-  <div class="postmeta">
-    {{ partial "postmeta.html" . }}
+  <div style="margin:2px 0px;font-size:0.85em;">
+    <span class="meta-post">
+      <em class="fa fa-calendar-alt"></em
+      >&nbsp;&nbsp;{{ .Lastmod.Format ( .Site.Params.dateformat | default "Jan 2, 2006") }}
+    </span>
   </div>
 </article>
